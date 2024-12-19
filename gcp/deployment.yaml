@@ -1,0 +1,213 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openmrs
+spec:
+  selector:
+    matchLabels:
+      app: openmrs
+  template:
+    metadata:
+      labels:
+        app: openmrs
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT}
+      containers:
+      - name: gateway
+        image: openmrs/openmrs-reference-application-3-gateway:${TAG:-qa}
+        ports:
+        - containerPort: 80
+          name: gateway-port
+        resources:
+        #   requests:
+        #     cpu: 250m
+        #     memory: 64Mi
+        #   limits:
+        #     cpu: 500m
+        #     memory: 256Mi
+        # livenessProbe:
+        #   httpGet:
+        #     path: /api/v1/authentication/user/probes/health-check
+        #     port: 80
+        # readinessProbe:
+        #   httpGet:
+        #     path: /api/v1/authentication/user/probes/health-check
+        #     port: 80
+      - name: frontend
+        image: openmrs/openmrs-reference-application-3-frontend:${TAG:-qa}
+        # resources:
+        #   frontend:
+        #     cpu: 250m
+        #     memory: 64Mi
+        #   limits:
+        #     cpu: 500m
+        #     memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: http://localhost/
+            port: 80
+        readinessProbe:
+          httpGet:
+            path: http://localhost/
+            port: 80
+        env:
+        - name: SPA_PATH
+          valueFrom:
+            secretKeyRef:
+              name: openmrs-secret 
+              key: /openmrs/spa
+        - name: API_URL
+          valueFrom:
+            secretKeyRef:
+              name: openmrs-secret  
+              key: /openmrs
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: SPA_CONFIG_URLS
+              key: /openmrs/spa/config-core_demo.json 
+        - name: DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              name: ridex-production-secret 
+              key: database
+        # - name: DATABASE_PORT
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: ridex-production-secret 
+        #       key: port
+        - name: MAIL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: ridex-mail-secret 
+              key: host
+        - name: MAIL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: ridex-mail-secret 
+              key: username
+        - name: MAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ridex-mail-secret
+              key: password
+        - name: MAIL_FROM_ADDRESS
+          valueFrom:
+            secretKeyRef:
+              name: ridex-mail-secret
+              key: address
+        - name: MAIL_FROM_NAME
+          valueFrom:
+            secretKeyRef:
+              name: ridex-mail-secret
+              key: name
+        - name: MAIL_EHLO_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              name: ridex-mail-secret 
+              key: domain
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              name: ridex-twillio-secret
+              key: account_sid
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: ridex-twillio-secret
+              key: auth_token
+        - name: TWILIO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ridex-twillio-secret
+              key: api_key
+        - name: TWILIO_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: ridex-twillio-secret
+              key: api_secret
+        - name: TWILIO_APP_SID
+          valueFrom:
+            secretKeyRef:
+              name: ridex-twillio-secret
+              key: app_sid
+        - name: TWILIO_PHONE_NUMBER
+          valueFrom:
+            secretKeyRef:
+              name: ridex-twillio-secret
+              key: phone_number
+      - name: cloud-sql-proxy
+        # It is recommended to use the latest version of the Cloud SQL Auth Proxy
+        # Make sure to update on a regular schedule!
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.4
+        args:
+          # If connecting from a VPC-native GKE cluster, you can use the
+          # following flag to have the proxy connect over private IP
+          # - "--private-ip"
+
+          # Enable structured logging with LogEntry format:
+          - "--structured-logs"
+
+          # Replace DB_PORT with the port the proxy should listen on
+          - "--port=3306"
+          - "silver-axon-438808-v1:us-central1:ridexproductiondb"
+
+        securityContext:
+          # The default Cloud SQL Auth Proxy image runs as the
+          # "nonroot" user and group (uid: 65532) by default.
+          runAsNonRoot: true
+        # You should use resource requests/limits as a best practice to prevent
+        # pods from consuming too many resources and affecting the execution of
+        # other pods. You should adjust the following values based on what your
+        # application needs. For details, see
+        # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        resources:
+          # requests:
+            # The proxy's memory use scales linearly with the number of active
+            # connections. Fewer open connections will use less memory. Adjust
+            # this value based on your application's requirements.
+            # cpu: 250m
+            #memory: 64Mi
+            # memory: "2Gi"
+            # The proxy's CPU use scales linearly with the amount of IO between
+            # the database and the application. Adjust this value based on your
+            # application's requirements.
+          #   cpu: "1"
+          # limits:
+          #   cpu: 500m
+          #   memory: 256Mi
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentication
+  # annotations:
+  #   cloud.google.com/backend-config: '{"auth-port": "auth-backendconfig"}'
+    # cloud.google.com/backend-config: auth-backendconfig
+spec:
+  selector:
+    app: authentication
+  type: NodePort  
+  ports:
+  - name: auth-port
+    protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30000
+
+    
