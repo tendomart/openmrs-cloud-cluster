@@ -33,20 +33,6 @@ spec:
         - containerPort: 80
           name: gateway-port
         resources:
-        #   requests:
-        #     cpu: 250m
-        #     memory: 64Mi
-        #   limits:
-        #     cpu: 500m
-        #     memory: 256Mi
-        # livenessProbe:
-        #   httpGet:
-        #     path: /api/v1/authentication/user/probes/health-check
-        #     port: 80
-        # readinessProbe:
-        #   httpGet:
-        #     path: /api/v1/authentication/user/probes/health-check
-        #     port: 80
       - name: frontend
         image: openmrs/openmrs-reference-application-3-frontend:${TAG:-qa}
         # resources:
@@ -80,11 +66,11 @@ spec:
             secretKeyRef:
               name: SPA_CONFIG_URLS
               key: /openmrs/spa/config-core_demo.json 
-        - name: DATABASE_NAME
+        - name: SPA_DEFAULT_LOCALE
           valueFrom:
             secretKeyRef:
-              name: ridex-production-secret 
-              key: database
+              name: openmrs-secret 
+              key: en
         # - name: DATABASE_PORT
         #   valueFrom:
         #     secretKeyRef:

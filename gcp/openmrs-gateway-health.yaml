@@ -1,0 +1,17 @@
+
+apiVersion: cloud.google.com/v1
+kind: FrontendConfig
+metadata:
+  name: openmrs-gateway-healthcheck
+spec:
+  healthCheck:
+    timeoutSec: 5
+    healthyThreshold: 300
+    unhealthyThreshold: 1000
+    type: HTTP
+    requestPath: http://localhost/
+    port: 80
+
+   
+
+  
