@@ -71,71 +71,7 @@ spec:
             secretKeyRef:
               name: openmrs-secret 
               key: en
-        # - name: DATABASE_PORT
-        #   valueFrom:
-        #     secretKeyRef:
-        #       name: ridex-production-secret 
-        #       key: port
-        - name: MAIL_HOST
-          valueFrom:
-            secretKeyRef:
-              name: ridex-mail-secret 
-              key: host
-        - name: MAIL_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: ridex-mail-secret 
-              key: username
-        - name: MAIL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: ridex-mail-secret
-              key: password
-        - name: MAIL_FROM_ADDRESS
-          valueFrom:
-            secretKeyRef:
-              name: ridex-mail-secret
-              key: address
-        - name: MAIL_FROM_NAME
-          valueFrom:
-            secretKeyRef:
-              name: ridex-mail-secret
-              key: name
-        - name: MAIL_EHLO_DOMAIN
-          valueFrom:
-            secretKeyRef:
-              name: ridex-mail-secret 
-              key: domain
-        - name: TWILIO_ACCOUNT_SID
-          valueFrom:
-            secretKeyRef:
-              name: ridex-twillio-secret
-              key: account_sid
-        - name: TWILIO_AUTH_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: ridex-twillio-secret
-              key: auth_token
-        - name: TWILIO_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: ridex-twillio-secret
-              key: api_key
-        - name: TWILIO_API_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: ridex-twillio-secret
-              key: api_secret
-        - name: TWILIO_APP_SID
-          valueFrom:
-            secretKeyRef:
-              name: ridex-twillio-secret
-              key: app_sid
-        - name: TWILIO_PHONE_NUMBER
-          valueFrom:
-            secretKeyRef:
-              name: ridex-twillio-secret
-              key: phone_number
+        
       - name: cloud-sql-proxy
         # It is recommended to use the latest version of the Cloud SQL Auth Proxy
         # Make sure to update on a regular schedule!
@@ -150,6 +86,7 @@ spec:
 
           # Replace DB_PORT with the port the proxy should listen on
           - "--port=3306"
+          - ${PORT}
           - "silver-axon-438808-v1:us-central1:ridexproductiondb"
 
         securityContext:
@@ -181,19 +118,18 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: authentication
-  # annotations:
-  #   cloud.google.com/backend-config: '{"auth-port": "auth-backendconfig"}'
-    # cloud.google.com/backend-config: auth-backendconfig
+  name: openmrs
+  annotations:
+    cloud.google.com/backend-config: '{"openmrs-port": "openmrs-backendconfig"}'
 spec:
   selector:
-    app: authentication
+    app: openmrs
   type: NodePort  
   ports:
   - name: auth-port
     protocol: TCP
-    port: 80
-    targetPort: 80
+    port: 8080
+    targetPort: 8080
     nodePort: 30000
 
     
